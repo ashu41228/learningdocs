@@ -1,0 +1,100 @@
+1) task is to extract the data from csv files from hdfs, apply filters and ordering with specified columns.
+11,rahul,pune,IT
+12,sumit,mumbai,HR
+13,vaibhav,Hinjewadi,MECH
+14,vikram,Satara,IT
+
+val rdd = sc.textFile("/input/student.csv")
+val rdd_filter = rdd.filter(line => line.split(",")(3).equals("IT"))
+val sorted = rdd_filter.sortBy(x => x.split(",")(0).toInt)  ascending
+val sorted = rdd_filter.sortBy(x => x.split(",")(0).toInt,false) descending
+
+2) task is similar as 1st but to retrieve the data from json.
+
+import org.apache.spark.sql.SQLContext
+val sqlcontext = new SQLContext(sc)
+val departjson= sqlcontext.jsonFile("/input/department.json")
+departjson.registerTempTable("department")
+sqlContext.sql("select * from department where department_name='TESTING' or department_name='Footwear'")
+val depart_out = sqlContext.sql("select * from department where department_name='TESTING' or department_name='Footwear' order by department_id desc")
+depart_out.toJSON.saveAsTextFile("/user/narendra/data/depart_out") or sort_department.write.json("file:/home/kpit/depart_out")
+
+3rd and 4th tasks are on querying the hive tables, apply aggregate functionalities, conditions and ordering.
+
+import org.apache.spark.sql.hive.HiveContext
+val hivecontext= new HiveContext(sc)
+hivecontext.sql("select * from test.emp where ename='Test'")
+hivecontext.sql("select * from test.emp where ename='Test' order by eid desc")
+val stor_tb = hivecontext.sql("create table depart_spark as select * from test.emp")
+ 
+5th is to use accumulator to perform word count.
+Two shared variables in spark: broadcast(immutable) and accumulator(mutable)
+broadcast variable 
+broadcast variable are distrubuted(shared) to the cluster,immutable and to be able to fit in memory.
+Example:
+val data=sc.parallelize(Array(1,2,3))
+val squ=data.map(x=>(x,x*x))
+val mapped=Map(1->"One",2->"Two",3->"three")
+val bc=sc.broadcast(mapped)
+val data1=squ.map(x=>(bc.value(x._1),x._2)) 
+
+Accumulators
+Accumulators are variables which may be added to through associative and cummutative operations.
+There are many uses for accumulators including implementing counters or sums.
+example:http://timepasstechies.com/spark-accumulator-broadcast-example-java-scala-tutorial-10/
+val rdd =  sc.textFile("file:/home/kpit/input.txt")
+val ac =sc.accumulator(0,"total count")
+rdd.collect().foreach { x =>
+ac += 1
+println(x)
+}
+ac.value
+
+6th is to submit a spark job on yarn.
+
+7th is to extract 2 data-sets which contains common column. Apply filters and join the data-sets to generate the required output.
+
+Different transformation & actions in RDD
+Pair RDD and Dstreams
+Batch and window sizing in spark streaming
+Various Joins and Cartesian operations in RDD
+Broadcast and accumulator
+Word count example (Specially in Java)
+pyspark especially set and join
+schemaRDD in spark sql
+Lineage and memory usage
+MLLib : Regression, K-means and Clustering
+Graph-X: Spark Quick Start guide would be enough.
+
+RDDJoin
+customer.txt
+1,Ramesh,32,Ahmedabad,2000.00
+2,Khilan,25,Delhi,1500.00
+3,kaushik,23,Kota,2000.00
+4,Chaitali,25,Mumbai,6500.00
+5,Hardik,27,Bhopal,8500.00
+6,Komal,22,MP,4500.00
+7,Muffy,24,Indore,10000.00
+
+oreders.txt
+102,2009-10-08 00:00:00,3,3000
+100,2009-10-08 00:00:00,3,1500
+101,2009-11-20 00:00:00,2,1560
+103,2009-11-20 00:00:00,4,2060
+
+val customer = sc.textFile("file:/home/kpit/customers.txt")
+val cust_parse = customer.map(x => x.split(",")(0),x)
+
+val order = sc.textFile("file:/home/kpit/orders.txt")
+val ord_parse = order.map(x => (x.split(",")(2),x))
+val jnd_data = cust_parse.join(ord_parse)
+
+import org.apache.spark.sql.SQLContext,org.apache.spark.sql.Row
+case class customer(id:Int,name:String,Age:Int,Address:String,Amount:Double)
+val cust_data = sc.textFile("file:/home/kpit/customers.txt").map(x =>x.split(",")).map(x =>customer(x(0).toInt,x(1).toString,x(2).toInt,x(3).toString,x(4).toDouble))
+cust_data.toDF.registerTempTable("cust_tb")
+
+case class orders(order_id:Int,date:String,o_id:Int,price:String)
+val order = sc.textFile("file:/home/kpit/orders.txt").map(x => x.split(",")).map(x =>orders(x(0).toInt,x(1).toString,x(2).toInt,x(3).toString)
+order.toDF.registerTempTable("order_tb")
+
